@@ -97,12 +97,14 @@ def validate_app(root, app_id, files):
     require(ID.fullmatch(app_id) is not None,'invalid application ID')
     directory=root/'apps'/app_id
     entry=read_json(directory/'submission.json')
-    required={'schema','id','name','summary','description','version','release_notes','developer','maintainers','license','homepage','support_url','source','categories','privacy','manifest','metainfo','icon','screenshots','permissions'}
+    required={'schema','id','name','summary','description','version','release_notes','developer','maintainers','maintainer_ids','license','homepage','support_url','source','categories','privacy','manifest','metainfo','icon','screenshots','permissions'}
     require(set(entry)==required,'listing must contain exactly the documented fields; review status is not a developer field')
     require(entry['schema']==1 and entry['id']==app_id,'listing schema/ID differs from directory')
     for field,limit in [('name',80),('summary',150),('description',8000),('version',80),('release_notes',4000),('developer',150),('license',100)]:text(entry[field],field,limit)
     require(isinstance(entry['maintainers'],list) and 1<=len(entry['maintainers'])<=20 and all(isinstance(m,str) and LOGIN.fullmatch(m) for m in entry['maintainers']),'invalid maintainer list')
     require(len({m.lower() for m in entry['maintainers']})==len(entry['maintainers']),'duplicate maintainers')
+    require(isinstance(entry['maintainer_ids'],dict) and set(entry['maintainer_ids'])==set(entry['maintainers']) and all(type(uid) is int and uid>0 for uid in entry['maintainer_ids'].values()),'each maintainer needs their stable numeric GitHub ID')
+    require(len(set(entry['maintainer_ids'].values()))==len(entry['maintainer_ids']),'duplicate maintainer IDs')
     require(isinstance(entry['categories'],list) and 1<=len(entry['categories'])<=3 and all(c in CATEGORIES for c in entry['categories']),'invalid categories')
     for field in ['homepage','support_url']:url(entry[field],field)
     source=entry['source']; require(isinstance(source,dict) and set(source)=={'url','commit'},'invalid source identity')
@@ -153,29 +155,29 @@ def validate_app(root, app_id, files):
     return entry
 
 
-def check(root, base=None, actor=None):
+def check(root, base=None, actor=None, actor_id=None):
     root=Path(root).resolve();files=tracked(root)
     ids=sorted({name.split('/')[1] for name in files if name.startswith('apps/') and name!='apps/.gitkeep'})
     entries={app_id:validate_app(root,app_id,files) for app_id in ids}
     if base is not None:
         base=Path(base).resolve();previous=tracked(base)
-        reviewers={name.lower() for name in read_json(base/'reviewers.json')['reviewers']}
+        reviewers=set(read_json(base/'reviewers.json')['reviewer_ids'])
         require(actor is not None and LOGIN.fullmatch(actor),'PR actor required')
-        actor=actor.lower()
+        actor=actor.lower();require(type(actor_id) is int and actor_id>0,'trusted PR actor ID required')
         changed={name for name in set(files)|set(previous) if files.get(name)!=previous.get(name)}
         app_changes={name.split('/')[1] for name in changed if name.startswith('apps/') and name!='apps/.gitkeep'}
-        if actor not in reviewers:
+        if actor_id not in reviewers:
             require(changed and all(name.startswith('apps/') and name!='apps/.gitkeep' for name in changed),'app submitters may change only their app directory')
             require(len(app_changes)==1,'change exactly one app per PR')
         for app_id in sorted(app_changes):
-            require(app_id in entries or actor in reviewers,'withdrawal/removal needs a reviewer decision')
+            require(app_id in entries or actor_id in reviewers,'withdrawal/removal needs a reviewer decision')
             if app_id not in entries:continue
             old_path=base/'apps'/app_id/'submission.json'
             old=read_json(old_path) if old_path.exists() else None
-            authorised={name.lower() for name in (old or entries[app_id])['maintainers']}
-            require(actor in reviewers or actor in authorised,'PR actor is not an approved maintainer; proposed self-addition grants no authority')
+            authorised=set((old or entries[app_id])['maintainer_ids'].values())
+            require(actor_id in reviewers or actor_id in authorised,'PR actor is not an approved maintainer; proposed self-addition grants no authority')
             if old:
-                changes=[field for field in ['maintainers','permissions','privacy','source','version','screenshots'] if old.get(field)!=entries[app_id].get(field)]
+                changes=[field for field in ['maintainers','maintainer_ids','permissions','privacy','source','version','screenshots'] if old.get(field)!=entries[app_id].get(field)]
                 print(f'{app_id}: reviewer must inspect changes to '+', '.join(changes))
             else:print(f'{app_id}: NEW APP — ownership, licensing, permissions and runtime review required')
     print(f'Metadata/assets valid for {len(entries)} app(s). No builds, ownership verification or publication performed.')
@@ -184,8 +186,8 @@ def check(root, base=None, actor=None):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--root',default='.');parser.add_argument('--base-tree');parser.add_argument('--actor')
+    parser.add_argument('--root',default='.');parser.add_argument('--base-tree');parser.add_argument('--actor');parser.add_argument('--actor-id',type=int)
     args=parser.parse_args()
-    try:check(args.root,args.base_tree,args.actor)
+    try:check(args.root,args.base_tree,args.actor,args.actor_id)
     except (ValueError,OSError,ET.ParseError,Image.DecompressionBombError,Image.DecompressionBombWarning) as error:
         parser.exit(1,f'Submission rejected: {error}\n')

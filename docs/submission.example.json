@@ -35,5 +35,8 @@
   ],
   "permissions": {
     "--socket=wayland": "Display the application on Wayland."
+  },
+  "maintainer_ids": {
+    "your-github-name": 123456
   }
 }

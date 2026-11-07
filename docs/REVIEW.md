@@ -33,8 +33,8 @@ states, not an automatic claim that a build or verification happened.
 
 ## Update review
 
-The trusted validator checks the PR actor against BASE metadata maintainers;
-adding oneself to the proposed maintainer list grants no update authority.
+The trusted validator checks the trusted PR actor numeric ID against BASE metadata maintainer IDs; display names are not authority. A renamed account keeps its ID and a recycled username gains no update rights.
+Adding oneself to the proposed maintainer list grants no update authority.
 Review source pin/version/changelog and permission diff, and recheck screenshots
 if UI changed. Source-host changes, privacy changes, maintainers or app identity
 require ownership/permission review again. A former maintainer cannot transfer

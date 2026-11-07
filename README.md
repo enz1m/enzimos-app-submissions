@@ -6,7 +6,11 @@ account can submit an app. Publication requires review, an isolated build,
 install/run testing and signed release promotion. This repository has no
 production signing keys, upload credentials or automatic publication job.
 
-## Submit a new app
+## Submit through the developer dashboard
+
+The normal route is [Sign in with GitHub](https://flatpak.enzim.dev/dashboard.html): connect your public app repository, select a release, and complete the listing/screenshots. The service pins its source commit and keeps updates attached to stable GitHub account/repository IDs. No developer PR is required for this route. Review stages are visible in the dashboard and [public review queue](https://flatpak.enzim.dev/reviews.html). The reviewer handles packaging help, canonical review, isolated testing and private signed promotion.
+
+## Advanced: submit packaging directly
 
 1. Read the [submission requirements](docs/REQUIREMENTS.md).
 2. [Open the New app form](https://github.com/enz1m/enzimos-app-submissions/issues/new?template=new-app.yml).
@@ -32,8 +36,10 @@ release cohort and do not imply their sources have been publicly mirrored.
 
 ## Update an approved app
 
-Use the [Update app form](https://github.com/enz1m/enzimos-app-submissions/issues/new?template=update-app.yml)
-and a PR changing only your app directory. The actor must be one of the
+Select your app in the [developer dashboard](https://flatpak.enzim.dev/dashboard.html)
+and choose its next release. For direct packaging contributions, use the
+[Update app form](https://github.com/enz1m/enzimos-app-submissions/issues/new?template=update-app.yml)
+and a PR changing only your app directory. The actor’s numeric GitHub ID must be one of the
 maintainers in the existing approved metadata (or a repository reviewer).
 Always include the new immutable source revision, version and release notes.
 Every update needs review. Permission expansion, maintainer/ownership changes,

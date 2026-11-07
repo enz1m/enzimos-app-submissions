@@ -6,7 +6,7 @@ Use a stable reverse-DNS application ID. Provide the public source repository,
 an exact 40-character Git commit, version, release notes, licence identifier,
 homepage, support URL, privacy-policy URL and an accurate data-collection
 statement. Include a short summary, full description, categories and the GitHub
-usernames authorised to maintain the app. The submitter must be among those
+usernames and stable numeric GitHub IDs authorised to maintain the app. The dashboard records these automatically; raw manifest contributors include the `maintainer_ids` map. The submitter must be among those
 maintainers; recording a username is not ownership verification.
 
 Demonstrate control of the upstream project or relevant domain using a link

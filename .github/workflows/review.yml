@@ -29,6 +29,7 @@ jobs:
       - name: Validate data with the trusted base policy
         env:
           SUBMISSION_ACTOR: ${{ github.event.pull_request.user.login }}
-        run: /usr/bin/python3 policy/tools/validate.py --root proposed --base-tree policy --actor "$SUBMISSION_ACTOR"
+          SUBMISSION_ACTOR_ID: ${{ github.event.pull_request.user.id }}
+        run: /usr/bin/python3 policy/tools/validate.py --root proposed --base-tree policy --actor "$SUBMISSION_ACTOR" --actor-id "$SUBMISSION_ACTOR_ID"
       - name: Exercise admission and update boundaries from trusted policy
         run: /usr/bin/python3 policy/tests/test_submission.py
