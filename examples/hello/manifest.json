@@ -1,0 +1,25 @@
+{
+  "app-id": "org.enzimos.CISmoke",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "25.08",
+  "sdk": "org.freedesktop.Sdk",
+  "command": "enzim-ci-smoke",
+  "modules": [
+    {
+      "name": "hello",
+      "buildsystem": "simple",
+      "build-commands": [
+        "cc examples/hello/app.c -o enzim-ci-smoke",
+        "install -Dm755 enzim-ci-smoke /app/bin/enzim-ci-smoke"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/enz1m/enzimos-app-submissions",
+          "commit": "@ENZIM_SOURCE_COMMIT@",
+          "disable-submodules": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+name: enzim controlled Flatpak builder
+on:
+  workflow_call:
+    inputs:
+      source_commit:
+        required: true
+        type: string
+      manifest_path:
+        required: true
+        type: string
+      app_id:
+        required: true
+        type: string
+      ticket:
+        required: true
+        type: string
+    secrets:
+      app_configuration:
+        required: false
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.package.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: enz1m/enzimos-app-submissions
+          ref: 5c489f85fc92650bb0e80d5076b13d959e792fd4
+          path: builder
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_commit }}
+          path: source
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Install the build tools on this disposable runner
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Build only the selected source with declared inputs and offline compilation
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          MANIFEST_PATH: ${{ inputs.manifest_path }}
+          APP_ID: ${{ inputs.app_id }}
+          TICKET: ${{ inputs.ticket }}
+          ENZIM_BUILD_CONFIG: ${{ secrets.app_configuration }}
+        run: |
+          python3 builder/tools/store_build.py build --source "$GITHUB_WORKSPACE/source" \
+            --repository "$GITHUB_REPOSITORY" --commit "$SOURCE_COMMIT" --manifest "$MANIFEST_PATH" \
+            --app "$APP_ID" --ticket "$TICKET" --output "$RUNNER_TEMP/enzim/package"
+      - name: Retain the exact unsigned package for the separate attestation worker
+        id: package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: enzim-unsigned-${{ inputs.ticket }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/enzim/package/app.flatpak
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+  attest:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      # This fresh job receives no application secrets and executes no app code.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: enz1m/enzimos-app-submissions
+          ref: 5c489f85fc92650bb0e80d5076b13d959e792fd4
+          path: builder
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_commit }}
+          path: source
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact }}
+          path: ${{ runner.temp }}/enzim/package
+          merge-multiple: true
+      - name: Bind actual package bytes to the selected app source and manifest
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          MANIFEST_PATH: ${{ inputs.manifest_path }}
+          APP_ID: ${{ inputs.app_id }}
+          TICKET: ${{ inputs.ticket }}
+        run: |
+          python3 builder/tools/store_build.py record --source "$GITHUB_WORKSPACE/source" \
+            --repository "$GITHUB_REPOSITORY" --commit "$SOURCE_COMMIT" --manifest "$MANIFEST_PATH" \
+            --app "$APP_ID" --ticket "$TICKET" --output "$RUNNER_TEMP/enzim/package"
+      - name: Attest the package with the isolated builder identity
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ runner.temp }}/enzim/package/app.flatpak
+          predicate-type: https://enzim.dev/attestations/flatpak-build/v1
+          predicate-path: ${{ runner.temp }}/enzim/package/build-record.json
+      - name: Publish the immutable build artifact for intake verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: enzim-build-${{ inputs.ticket }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/enzim/package/app.flatpak
+            ${{ runner.temp }}/enzim/package/build-record.json
+            ${{ runner.temp }}/enzim/package/manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
