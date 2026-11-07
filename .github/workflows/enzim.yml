@@ -22,7 +22,7 @@ permissions:
   attestations: write
 jobs:
   flatpak:
-    uses: enz1m/enzimos-app-submissions/.github/workflows/build-flatpak.yml@4d629171f52c5b4233c337cf4bcb14ed58588b56
+    uses: enz1m/enzimos-app-submissions/.github/workflows/build-flatpak.yml@d6eea74936187237998487938c410fee36332311
     with:
       source_commit: ${{ inputs.source_commit }}
       manifest_path: ${{ inputs.manifest_path }}
