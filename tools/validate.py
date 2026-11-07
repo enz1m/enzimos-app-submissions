@@ -25,11 +25,15 @@ def require(condition, message):
 
 def text(value, name, maximum=4000):
     require(isinstance(value,str) and 0 < len(value.strip()) <= maximum and '\0' not in value, f'invalid {name}')
+    require(all(ord(character)>=32 or character in '\n\t' for character in value) and '\x7f' not in value, f'control characters in {name}')
+    if maximum<=300:
+        require('\n' not in value and '\t' not in value, f'{name} must be a single line')
     return value
 
 
 def url(value, name):
     text(value,name,1000)
+    require(not any(character.isspace() for character in value),f'whitespace in {name}')
     parsed=urllib.parse.urlsplit(value)
     require(parsed.scheme=='https' and parsed.hostname and not parsed.username and not parsed.password and not parsed.fragment and not parsed.query, f'{name} needs a public HTTPS URL without credentials/query/fragment')
     host=parsed.hostname.lower()
