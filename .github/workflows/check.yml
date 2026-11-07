@@ -17,3 +17,4 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y python3-pil
       - run: /usr/bin/python3 tools/validate.py --root .
       - run: /usr/bin/python3 tests/test_submission.py
+      - run: /usr/bin/python3 tests/test_builder.py

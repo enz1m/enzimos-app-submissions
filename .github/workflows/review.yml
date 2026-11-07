@@ -33,3 +33,5 @@ jobs:
         run: /usr/bin/python3 policy/tools/validate.py --root proposed --base-tree policy --actor "$SUBMISSION_ACTOR" --actor-id "$SUBMISSION_ACTOR_ID"
       - name: Exercise admission and update boundaries from trusted policy
         run: /usr/bin/python3 policy/tests/test_submission.py
+      - name: Exercise source-build admission from trusted policy
+        run: /usr/bin/python3 policy/tests/test_builder.py

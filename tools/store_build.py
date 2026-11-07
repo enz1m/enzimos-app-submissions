@@ -108,7 +108,7 @@ def build(args):
     # This working manifest is outside the app checkout. No source-controlled host
     # helper is executed. The selected manifest is self-contained by policy.
     working=output.parent/'build-manifest.json';working.write_bytes(public_manifest)
-    runtime=manifest['runtime']+'/'+manifest['runtime-version'];sdk=manifest['sdk']+'/'+manifest['runtime-version']
+    runtime=manifest['runtime']+'//'+manifest['runtime-version'];sdk=manifest['sdk']+'//'+manifest['runtime-version']
     run(['flatpak','--user','remote-add','--if-not-exists','flathub','https://dl.flathub.org/repo/flathub.flatpakrepo'])
     run(['flatpak','--user','install','-y','--noninteractive','flathub',runtime,sdk])
     state=str(output.parent/'builder-state');directory=str(output.parent/'app-build');repo=str(output.parent/'unsigned-repo')
