@@ -8,7 +8,7 @@ production signing keys, upload credentials or automatic publication job.
 
 ## Submit through the developer dashboard
 
-The normal route is [Sign in with GitHub](https://flatpak.enzim.dev/dashboard.html): connect your public app repository, select a release, and complete the listing/screenshots. The service pins its source commit and keeps updates attached to stable GitHub account/repository IDs. No developer PR is required for this route. Review stages are visible in the dashboard and [public review queue](https://flatpak.enzim.dev/reviews.html). The reviewer handles packaging help, canonical review, isolated testing and private signed promotion.
+The normal route is [Sign in with GitHub](https://flatpak.enzim.dev/dashboard.html): connect your public app repository, select a release, and complete the listing/screenshots. The service pins its source commit and keeps updates attached to stable GitHub account/repository IDs. Enable automatic builds once in the dashboard: the App prepares a setup PR, you approve its exact files there, and future submissions build on your GitHub Actions runners. Builds call our public builder at an approved immutable revision. App settings stay in your GitHub Actions secrets. A separate job attests the package; the store verifies its exact source, packaging, repository and build identity before manual review. No developer PR is required for this route. Review stages are visible in the dashboard and [public review queue](https://flatpak.enzim.dev/reviews.html). The reviewer handles packaging help, canonical review, isolated testing and private signed promotion.
 
 ## Advanced: submit packaging directly
 

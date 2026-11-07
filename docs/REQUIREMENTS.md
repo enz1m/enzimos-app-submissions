@@ -63,3 +63,16 @@ pass on the target runtime before publication; metadata CI alone is insufficient
 
 Keep each app PR limited to that app's directory and assets. Proposals to change
 review policy or tools go through an issue and a reviewer-authored change.
+
+## Dashboard build manifests
+
+The developer-side builder accepts self-contained JSON manifests. When the
+manifest is stored in the same GitHub repository as the app, set the main Git
+source commit to `@ENZIM_SOURCE_COMMIT@` and `disable-submodules` to true. The
+builder resolves that placeholder to the selected release commit. All other
+Git dependencies need full commits, and downloads need SHA-256. Canonical
+submission exports resolve the placeholder before this repository validates
+them. No app build runs inside the trusted PR metadata workflow.
+
+See https://flatpak.enzim.dev/agents.md for CLI/API onboarding and optional
+app configuration. All publication decisions remain manual.
