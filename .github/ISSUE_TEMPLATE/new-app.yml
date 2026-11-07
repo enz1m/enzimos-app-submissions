@@ -1,0 +1,135 @@
+name: New application
+description: Submit a public-source app for listing and packaging review.
+title: '[New app]: '
+labels:
+- submitted
+- new-app
+body:
+- type: markdown
+  attributes:
+    value: This is a PUBLIC submission. Never include passwords, private documents or sensitive ownership
+      evidence. Only public-source apps are accepted initially. Submission is a review request, not approval
+      or publication.
+- type: input
+  id: app-id
+  attributes:
+    label: Application ID
+    description: Stable reverse-DNS ID, for example org.example.MyApp.
+  validations:
+    required: true
+- type: input
+  id: app-name
+  attributes:
+    label: Application name
+  validations:
+    required: true
+- type: input
+  id: version
+  attributes:
+    label: Version
+  validations:
+    required: true
+- type: input
+  id: summary
+  attributes:
+    label: Short summary
+    description: One plain-language sentence, no marketing claims.
+  validations:
+    required: true
+- type: textarea
+  id: listing
+  attributes:
+    label: Description and listing links
+    description: Full description, categories, homepage, support URL, privacy-policy URL and licence identifier.
+  validations:
+    required: true
+- type: input
+  id: source
+  attributes:
+    label: Public source repository
+    description: HTTPS URL to the authoritative public Git source repository.
+  validations:
+    required: true
+- type: input
+  id: revision
+  attributes:
+    label: Exact source commit
+    description: Full 40-character Git commit. A moving branch or tag is insufficient.
+  validations:
+    required: true
+- type: upload
+  id: packaging
+  attributes:
+    label: Flatpak manifest and AppStream
+    description: Upload manifest.json and a ZIP containing metainfo.xml as needed. Canonical packaging
+      must also be committed in the matching app PR.
+  validations:
+    required: true
+    accept: .json,.zip,.tar.gz
+- type: upload
+  id: icon
+  attributes:
+    label: Application icon
+    description: "PNG, square 128\u20131024 pixels (512 recommended), at most 2 MiB."
+  validations:
+    required: true
+    accept: .png
+- type: upload
+  id: screenshots
+  attributes:
+    label: Application screenshots
+    description: "One to eight real screenshots, 640\xD7360 to 3840\xD72160, at most 8 MiB each. No personal/private\
+      \ data."
+  validations:
+    required: true
+    accept: .png,.jpg,.jpeg,.webp
+- type: textarea
+  id: captions
+  attributes:
+    label: Screenshot captions
+    description: Give a descriptive caption for each image, in order.
+  validations:
+    required: true
+- type: textarea
+  id: permissions
+  attributes:
+    label: Sandbox permissions and justification
+    description: List every finish-arg and explain why it is needed. If none, say none.
+  validations:
+    required: true
+- type: textarea
+  id: privacy
+  attributes:
+    label: Data collection and privacy
+    description: What data does the app collect or send, where, and why? If none, say none. Include the
+      policy link.
+  validations:
+    required: true
+- type: input
+  id: maintainers
+  attributes:
+    label: Authorised GitHub maintainers
+    description: Include your own GitHub username; reviewer verifies upstream authority.
+  validations:
+    required: true
+- type: textarea
+  id: ownership
+  attributes:
+    label: Upstream / application-ID ownership
+    description: Link to public upstream/domain evidence or describe the verification method. Do not upload
+      private identity records.
+  validations:
+    required: true
+- type: checkboxes
+  id: confirmation
+  attributes:
+    label: Submission confirmations
+    options:
+    - label: The app has public source pinned to an immutable revision.
+      required: true
+    - label: I have permission to redistribute the app and submitted assets.
+      required: true
+    - label: The screenshots are genuine and contain no private user data.
+      required: true
+    - label: I understand that review, build, testing and signed promotion are required before publication.
+      required: true

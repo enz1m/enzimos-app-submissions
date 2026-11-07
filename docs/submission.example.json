@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "id": "org.example.MyApp",
+  "name": "My App",
+  "summary": "A short description of what the app does.",
+  "description": "Describe the app, core features and limitations.",
+  "version": "1.0.0",
+  "release_notes": "Initial release.",
+  "developer": "Example developer",
+  "maintainers": [
+    "your-github-name"
+  ],
+  "license": "MIT",
+  "homepage": "https://example.org/my-app",
+  "support_url": "https://github.com/example/my-app/issues",
+  "source": {
+    "url": "https://github.com/example/my-app",
+    "commit": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "categories": [
+    "Utility"
+  ],
+  "privacy": {
+    "policy_url": "https://example.org/my-app/privacy",
+    "data_collection": "Describe actual collection, or explicitly state none."
+  },
+  "manifest": "manifest.json",
+  "metainfo": "metainfo.xml",
+  "icon": "icon.png",
+  "screenshots": [
+    {
+      "file": "screenshots/01.png",
+      "caption": "Describe the real application view shown."
+    }
+  ],
+  "permissions": {
+    "--socket=wayland": "Display the application on Wayland."
+  }
+}

@@ -1,0 +1,79 @@
+name: Application update
+description: Request a reviewed release of an already approved app.
+title: '[Update]: '
+labels:
+- submitted
+- app-update
+body:
+- type: markdown
+  attributes:
+    value: Updates remain subject to review. Authorised maintainers submit a matching app PR; adding your
+      username to a proposed update does not grant update rights. Never include private data.
+- type: input
+  id: app-id
+  attributes:
+    label: Application ID
+  validations:
+    required: true
+- type: input
+  id: version
+  attributes:
+    label: New version
+  validations:
+    required: true
+- type: input
+  id: revision
+  attributes:
+    label: Exact public source commit
+    description: Full 40-character Git commit, plus source repository URL if it changed.
+  validations:
+    required: true
+- type: textarea
+  id: changes
+  attributes:
+    label: Release notes and changes
+  validations:
+    required: true
+- type: textarea
+  id: permissions
+  attributes:
+    label: Permissions / source / privacy changes
+    description: List additions, removals and source-host, dependency, privacy or maintainer changes.
+      Explicitly say unchanged when applicable.
+  validations:
+    required: true
+- type: upload
+  id: packaging
+  attributes:
+    label: Updated packaging
+    description: Manifest JSON and AppStream files (ZIP if needed). Link the matching app PR.
+  validations:
+    required: true
+    accept: .json,.zip,.tar.gz
+- type: upload
+  id: screenshots
+  attributes:
+    label: Updated screenshots
+    description: Required when the visible UI changes; include captions and commit the images in the PR.
+  validations:
+    required: false
+    accept: .png,.jpg,.jpeg,.webp
+- type: input
+  id: maintainer
+  attributes:
+    label: Your authorised maintainer username
+  validations:
+    required: true
+- type: input
+  id: pull-request
+  attributes:
+    label: Manifest pull request URL
+  validations:
+    required: true
+- type: checkboxes
+  id: confirmation
+  attributes:
+    label: Update confirmation
+    options:
+    - label: I am an authorised maintainer and have disclosed permission, privacy and ownership changes.
+      required: true
