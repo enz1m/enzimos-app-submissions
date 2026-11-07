@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: enz1m/enzimos-app-submissions
-          ref: 5c489f85fc92650bb0e80d5076b13d959e792fd4
+          ref: 23fc6b259e701bcfca9daa83e9a2f7f29a2f4387
           path: builder
           persist-credentials: false
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: enz1m/enzimos-app-submissions
-          ref: 5c489f85fc92650bb0e80d5076b13d959e792fd4
+          ref: 23fc6b259e701bcfca9daa83e9a2f7f29a2f4387
           path: builder
           persist-credentials: false
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
