@@ -68,3 +68,24 @@ Keep one code-owner approval, stale-approval dismissal, required metadata status
 resolved conversations and no force pushes/deletions on main. With only one
 reviewer, that reviewer cannot approve their own PR; add an independent trusted
 reviewer before using the PR route for reviewer-authored policy changes.
+
+## Transfer approved listings to the release operator
+
+After the reviewed PR is merged, check out its exact main revision on the
+release machine and run:
+
+```sh
+python3 tools/export_catalog.py --root . --output /private/work/reviewed-catalog.json
+```
+
+The export includes local paths to the reviewed icon/screenshots. Do not commit
+that generated operator file. For the selected app, build its `manifest.json`
+in isolation, then set `ENZFLAT_APPS=/private/work/reviewed-catalog.json` for
+`enzflat import`, `publish` and `bundle`. Update the private server allowlist
+through its administrator process first. The private publisher copies only
+reviewed bounded image assets and embeds listing/screenshot metadata in the
+signed repository release. The website displays them after that release is
+published; intake metadata alone never creates a store listing. Keep the
+operator's existing project catalog when preparing a combined release containing
+both project apps and new approved apps; every distributed app ref must remain
+in the selected curated catalog.
