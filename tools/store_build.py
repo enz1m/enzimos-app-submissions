@@ -126,6 +126,8 @@ def build(args):
     working.write_bytes(public_manifest)
     run(base+['--finish-only','--disable-download','--disable-cache','--repo='+repo,directory,str(working)])
     run(['flatpak','build-bundle',repo,str(output/'app.flatpak'),args.app,manifest.get('branch','master')])
+    environment={'runtime_commit':subprocess.check_output(['flatpak','--user','info','--show-commit',runtime],text=True).strip(),'sdk_commit':subprocess.check_output(['flatpak','--user','info','--show-commit',sdk],text=True).strip(),'configuration_names':sorted(values)}
+    (output/'build-inputs.json').write_text(json.dumps(environment)+'\n')
     working.unlink(missing_ok=True)
 
 
@@ -133,7 +135,10 @@ def record(args):
     raw=source_file(args.source,args.manifest).read_bytes();details=inspect(json.loads(raw),args.repository,args.commit,args.app)
     root=Path(args.output);package=root/'app.flatpak';require(package.is_file(),'Build artifact missing')
     sha=hashlib.file_digest(package.open('rb'),'sha256').hexdigest()
-    result={'schema':1,'repository':args.repository,'repository_id':int(os.environ['GITHUB_REPOSITORY_ID']),'source_commit':args.commit,'manifest_path':relative(args.manifest),'manifest_sha256':hashlib.sha256(raw).hexdigest(),'app_id':args.app,'ticket':args.ticket,'package_sha256':sha,'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),**details}
+    environment=json.loads((root/'build-inputs.json').read_text())
+    require(all(re.fullmatch('[0-9a-f]{64}',environment.get(key,'')) for key in ('runtime_commit','sdk_commit')),'Build environment commits are missing')
+    require(isinstance(environment.get('configuration_names'),list) and len(environment['configuration_names'])<=20 and all(isinstance(key,str) and re.fullmatch(r'ENZIM_[A-Z][A-Z0-9_]{0,60}',key) for key in environment['configuration_names']),'Invalid build configuration names')
+    result={'schema':1,'repository':args.repository,'repository_id':int(os.environ['GITHUB_REPOSITORY_ID']),'source_commit':args.commit,'manifest_path':relative(args.manifest),'manifest_sha256':hashlib.sha256(raw).hexdigest(),'app_id':args.app,'ticket':args.ticket,'package_sha256':sha,'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'build_environment':environment,**details}
     (root/'build-record.json').write_text(json.dumps(result,indent=2)+'\n')
     (root/'manifest.json').write_bytes(raw)
 
