@@ -1,22 +1,15 @@
 #!/usr/bin/env python3
 """Controlled Flatpak builder. App commands run only inside flatpak-builder's sandbox."""
 import argparse
-import copy
 import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
-import urllib.parse
+from build_policy import inspect, require, resolve
 
 PREDICATE='https://enzim.dev/attestations/flatpak-build/v1'
-SHA=re.compile('[0-9a-f]{40}')
-APP=re.compile(r'[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_-]*){2,}')
-
-
-def require(value,message):
-    if not value:raise ValueError(message)
 
 
 def relative(value):
@@ -31,60 +24,6 @@ def source_file(root,path):
     require(file.resolve().is_relative_to(root) and not any(p.is_symlink() for p in [file,*file.parents] if p!=root),'Manifest symlinks are not accepted')
     require(file.is_file() and file.stat().st_size<=256*1024,'Manifest missing or too large')
     return file
-
-
-def resolve(manifest,repository,commit):
-    manifest=copy.deepcopy(manifest)
-    def modules(items):
-        if not isinstance(items,list):return
-        for item in items:
-            if not isinstance(item,dict):continue
-            for source in item.get('sources',[]):
-                if isinstance(source,dict) and source.get('commit')=='@ENZIM_SOURCE_COMMIT@':
-                    require(source.get('url','').rstrip('/').removesuffix('.git')=='https://github.com/'+repository,'Source placeholder belongs only to this repository')
-                    source['commit']=commit
-            modules(item.get('modules'))
-    modules(manifest.get('modules'))
-    return manifest
-
-
-def inspect(manifest,repository,commit,app_id):
-    manifest=resolve(manifest,repository,commit)
-    require(SHA.fullmatch(commit) and APP.fullmatch(app_id) and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repository),'Invalid build identity')
-    require(isinstance(manifest,dict) and manifest.get('app-id',manifest.get('id'))==app_id,'Manifest application ID differs')
-    require(not manifest.get('add-extensions') and not manifest.get('build-extensions'),'Additional extensions need manual packaging review')
-    for key in ('runtime','sdk'):
-        require(re.fullmatch(r'org\.(freedesktop|gnome|kde)\.[A-Za-z0-9_.-]+',manifest.get(key,'')),'Use a reviewed Flathub runtime/SDK')
-    require(re.fullmatch(r'[A-Za-z0-9_.-]{1,50}',manifest.get('runtime-version','')),'Invalid runtime version')
-    require(re.fullmatch(r'[A-Za-z0-9_.-]{1,100}',manifest.get('command','')),'Invalid application command')
-    require(re.fullmatch(r'[A-Za-z0-9_.-]{1,100}',manifest.get('branch','master')),'Invalid Flatpak branch')
-    matched=False;sources=[]
-    def options(node):
-        require(not any(key in node for key in ('build-args','sdk-extensions','platform-extensions','extra-data')),'Host build arguments, extra-data and extensions require separate review')
-        if isinstance(node.get('build-options'),dict):options(node['build-options'])
-    def modules(items,depth=0):
-        nonlocal matched
-        require(isinstance(items,list) and 0<len(items)<=100 and depth<=8,'Invalid or external module include')
-        for module in items:
-            require(isinstance(module,dict),'Module includes must be expanded into the manifest')
-            options(module)
-            for source in module.get('sources',[]):
-                require(isinstance(source,dict) and source.get('type') in ('git','archive','file'),'Only declared Git/archive/file sources are accepted')
-                url=source.get('url','');parsed=urllib.parse.urlsplit(url)
-                require(parsed.scheme=='https' and parsed.hostname and '.' in parsed.hostname and not parsed.username and not parsed.password and not parsed.port and not parsed.hostname.endswith(('.local','.internal')),'Sources must use public HTTPS URLs')
-                require(not any(key in source for key in ('branch','tag','commands','path','paths','mirror-urls')),'Moving or undeclared source inputs are not accepted')
-                if source['type']=='git':
-                    require(SHA.fullmatch(source.get('commit','')),'Git dependencies need full commits')
-                    require(source.get('disable-submodules') is True,'Declare dependencies explicitly and set disable-submodules: true')
-                    if url.rstrip('/').removesuffix('.git')=='https://github.com/'+repository and source['commit']==commit:matched=True
-                else:require(re.fullmatch('[0-9a-f]{64}',source.get('sha256','')),'Downloaded inputs need SHA-256 checksums')
-                sources.append({key:source[key] for key in ('type','url','commit','sha256') if key in source})
-            if 'modules' in module:modules(module['modules'],depth+1)
-    options(manifest);modules(manifest.get('modules'))
-    require(matched,'Manifest must build the selected repository at the selected commit')
-    permissions=manifest.get('finish-args',[])
-    require(isinstance(permissions,list) and all(isinstance(value,str) and value.startswith('--') for value in permissions),'Invalid application permissions')
-    return {'sources':sources,'permissions':permissions,'runtime':manifest['runtime'],'sdk':manifest['sdk'],'runtime_version':manifest['runtime-version']}
 
 
 def configuration(raw):
@@ -110,7 +49,9 @@ def build(args):
     working=output.parent/'build-manifest.json';working.write_bytes(public_manifest)
     runtime=manifest['runtime']+'//'+manifest['runtime-version'];sdk=manifest['sdk']+'//'+manifest['runtime-version']
     run(['flatpak','--user','remote-add','--if-not-exists','flathub','https://dl.flathub.org/repo/flathub.flatpakrepo'])
-    run(['flatpak','--user','install','-y','--noninteractive','flathub',runtime,sdk])
+    extensions = [name + '//' + manifest['runtime-version']
+                  for name in manifest.get('sdk-extensions', [])]
+    run(['flatpak','--user','install','-y','--noninteractive','flathub',runtime,sdk,*extensions])
     state=str(output.parent/'builder-state');directory=str(output.parent/'app-build');repo=str(output.parent/'unsigned-repo')
     base=['flatpak-builder','--user','--sandbox','--state-dir='+state]
     run(base+['--download-only','--disable-cache',directory,str(working)])
@@ -125,8 +66,12 @@ def build(args):
     # settings. Values compiled into the application remain extractable.
     working.write_bytes(public_manifest)
     run(base+['--finish-only','--disable-download','--disable-cache','--repo='+repo,directory,str(working)])
-    run(['flatpak','build-bundle',repo,str(output/'app.flatpak'),args.app,manifest.get('branch','master')])
+    run(['flatpak','build-bundle',repo,str(output/'app.flatpak'),args.app,manifest['branch']])
     environment={'runtime_commit':subprocess.check_output(['flatpak','--user','info','--show-commit',runtime],text=True).strip(),'sdk_commit':subprocess.check_output(['flatpak','--user','info','--show-commit',sdk],text=True).strip(),'configuration_names':sorted(values)}
+    environment['sdk_extension_commits'] = {
+        ref: subprocess.check_output(['flatpak', '--user', 'info', '--show-commit', ref], text=True).strip()
+        for ref in extensions
+    }
     (output/'build-inputs.json').write_text(json.dumps(environment)+'\n')
     working.unlink(missing_ok=True)
 
@@ -137,6 +82,12 @@ def record(args):
     sha=hashlib.file_digest(package.open('rb'),'sha256').hexdigest()
     environment=json.loads((root/'build-inputs.json').read_text())
     require(all(re.fullmatch('[0-9a-f]{64}',environment.get(key,'')) for key in ('runtime_commit','sdk_commit')),'Build environment commits are missing')
+    extension_commits = environment.get('sdk_extension_commits', {})
+    expected_extensions = {name + '//' + details['runtime_version']
+                           for name in json.loads(raw).get('sdk-extensions', [])}
+    require(isinstance(extension_commits, dict) and set(extension_commits) == expected_extensions
+            and all(isinstance(commit, str) and re.fullmatch('[0-9a-f]{64}', commit)
+                    for commit in extension_commits.values()), 'SDK extension commits are missing or invalid')
     require(isinstance(environment.get('configuration_names'),list) and len(environment['configuration_names'])<=20 and all(isinstance(key,str) and re.fullmatch(r'ENZIM_[A-Z][A-Z0-9_]{0,60}',key) for key in environment['configuration_names']),'Invalid build configuration names')
     result={'schema':1,'repository':args.repository,'repository_id':int(os.environ['GITHUB_REPOSITORY_ID']),'source_commit':args.commit,'manifest_path':relative(args.manifest),'manifest_sha256':hashlib.sha256(raw).hexdigest(),'app_id':args.app,'ticket':args.ticket,'package_sha256':sha,'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'build_environment':environment,**details}
     (root/'build-record.json').write_text(json.dumps(result,indent=2)+'\n')

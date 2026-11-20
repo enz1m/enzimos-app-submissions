@@ -2,15 +2,14 @@
 """Read proposed listings as data; never execute submitted builds or helpers."""
 import argparse
 import hashlib
-import ipaddress
 import json
 from pathlib import Path
 import re
 import subprocess
-import urllib.parse
 import warnings
 import xml.etree.ElementTree as ET
 from PIL import Image
+from build_policy import public_https, screenshot_dimensions
 
 ID = re.compile(r'[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_-]*){2,}')
 LOGIN = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?')
@@ -31,19 +30,10 @@ def text(value, name, maximum=4000):
     return value
 
 
-def url(value, name):
-    text(value,name,1000)
-    require(not any(character.isspace() for character in value),f'whitespace in {name}')
-    parsed=urllib.parse.urlsplit(value)
-    require(parsed.scheme=='https' and parsed.hostname and not parsed.username and not parsed.password and not parsed.fragment and not parsed.query, f'{name} needs a public HTTPS URL without credentials/query/fragment')
-    host=parsed.hostname.lower()
-    require('.' in host and not host.endswith(('.local','.localhost','.internal','.invalid','.test')), f'{name} must be public')
-    try:
-        address=ipaddress.ip_address(host)
-    except ValueError:
-        pass
-    else:
-        require(address.is_global,f'{name} cannot use a private/local address')
+def url(value, name, *, fragment=False):
+    text(value, name, 1000)
+    details = 'without credentials or a query' if fragment else 'without credentials, query or fragment'
+    require(public_https(value, fragment=fragment), f'{name} needs a public HTTPS URL {details}')
     return value
 
 
@@ -86,7 +76,7 @@ def image(root,relative,icon=False):
             if icon:
                 require(data.format=='PNG' and width==height and 128<=width<=1024,'icon must be a square 128–1024px PNG')
             else:
-                require(640<=width<=3840 and 360<=height<=2160,'screenshot dimensions outside 640×360–3840×2160')
+                require(screenshot_dimensions(width, height), 'screenshot does not meet the landscape or portrait size limits')
             data.verify()
         with Image.open(path) as data:
             data.load()
@@ -106,11 +96,11 @@ def validate_app(root, app_id, files):
     require(isinstance(entry['maintainer_ids'],dict) and set(entry['maintainer_ids'])==set(entry['maintainers']) and all(type(uid) is int and uid>0 for uid in entry['maintainer_ids'].values()),'each maintainer needs their stable numeric GitHub ID')
     require(len(set(entry['maintainer_ids'].values()))==len(entry['maintainer_ids']),'duplicate maintainer IDs')
     require(isinstance(entry['categories'],list) and 1<=len(entry['categories'])<=3 and all(c in CATEGORIES for c in entry['categories']),'invalid categories')
-    for field in ['homepage','support_url']:url(entry[field],field)
+    for field in ['homepage','support_url']:url(entry[field],field,fragment=True)
     source=entry['source']; require(isinstance(source,dict) and set(source)=={'url','commit'},'invalid source identity')
     url(source['url'],'source URL');require(isinstance(source['commit'],str) and re.fullmatch('[0-9a-f]{40}',source['commit']),'source must pin a full Git commit')
     privacy=entry['privacy'];require(isinstance(privacy,dict) and set(privacy)=={'policy_url','data_collection'},'privacy policy and collection statement required')
-    url(privacy['policy_url'],'privacy policy');text(privacy['data_collection'],'data collection')
+    url(privacy['policy_url'],'privacy policy',fragment=True);text(privacy['data_collection'],'data collection')
     require(entry['manifest']=='manifest.json' and entry['metainfo']=='metainfo.xml' and entry['icon']=='icon.png','use canonical manifest/metainfo/icon file names')
     used={'submission.json','manifest.json','metainfo.xml',image(directory,entry['icon'],True)}
     shots=entry['screenshots'];require(isinstance(shots,list) and 1<=len(shots)<=8,'one to eight screenshots required')

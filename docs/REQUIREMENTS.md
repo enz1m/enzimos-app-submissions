@@ -29,7 +29,7 @@ Screenshots must show the app rather than a marketing mockup, use no private
 user data, and be images you may redistribute. Add a useful caption for each.
 
 - One to eight PNG, JPEG or WebP screenshots, each at most 8 MiB.
-- At least 640 × 360 and at most 3840 × 2160 pixels for the initial desktop
+- At least 640 × 360 landscape or 360 × 540 portrait. Maximum 3840 × 2160 landscape or 2160 × 3840 portrait for the initial desktop
   programme. These are enzim Apps intake limits, not claimed Flatpak limits.
 - PNG icon, square, 128–1024 pixels (512 recommended), at most 2 MiB.
 - Keep screenshots under `apps/APP_ID/screenshots/`; use `icon.png` for the icon.

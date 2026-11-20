@@ -10,6 +10,7 @@ import unittest
 from PIL import Image
 
 HERE=Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(HERE/'tools'))
 spec=importlib.util.spec_from_file_location('validator',HERE/'tools/validate.py')
 validator=importlib.util.module_from_spec(spec);spec.loader.exec_module(validator)
 
@@ -31,12 +32,12 @@ class Admission(unittest.TestCase):
             shutil.copytree(base,proposal,ignore=shutil.ignore_patterns('.git'))
             subprocess.run(['git','-C',str(proposal),'init','-q'],check=True)
             app=proposal/'apps/org.example.MyApp';(app/'screenshots').mkdir(parents=True)
-            entry=json.loads((HERE/'docs/submission.example.json').read_text());entry['maintainers']=['developer-one'];entry['maintainer_ids']={'developer-one':10}
+            entry=json.loads((HERE/'docs/submission.example.json').read_text());entry['maintainers']=['developer-one'];entry['maintainer_ids']={'developer-one':10};entry['privacy']['policy_url']='https://example.org/readme#privacy'
             (app/'submission.json').write_text(json.dumps(entry))
             manifest={'app-id':entry['id'],'runtime':'org.freedesktop.Platform','runtime-version':'25.08','sdk':'org.freedesktop.Sdk','command':'example','finish-args':['--socket=wayland'],'modules':[{'name':'example','buildsystem':'simple','build-commands':['true'],'sources':[{'type':'git','url':entry['source']['url'],'commit':entry['source']['commit']}]}]}
             (app/'manifest.json').write_text(json.dumps(manifest))
             (app/'metainfo.xml').write_text('<component type="desktop-application"><id>org.example.MyApp</id><name>My App</name><summary>An example</summary><metadata_license>CC0-1.0</metadata_license><project_license>MIT</project_license><screenshots><screenshot type="default"><image>https://example.org/01.png</image></screenshot></screenshots></component>')
-            Image.new('RGB',(512,512)).save(app/'icon.png');Image.new('RGB',(1280,720)).save(app/'screenshots/01.png');stage(proposal)
+            Image.new('RGB',(512,512)).save(app/'icon.png');Image.new('RGB',(421,620)).save(app/'screenshots/01.png');stage(proposal)
             self.assertIn(entry['id'],validator.check(proposal,base,'developer-one',10))
             export=scratch/'operator-catalog.json'
             subprocess.run([sys.executable,str(HERE/'tools/export_catalog.py'),'--root',str(proposal),'--output',str(export)],check=True,stdout=subprocess.DEVNULL)
@@ -64,7 +65,7 @@ class Admission(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'nonregular/escaping'):validator.check(proposal,approved,'developer-one',10)
             (app/'screenshots/01.png').unlink();(app/'screenshots/01.png').write_bytes(b'not an image');stage(proposal)
             with self.assertRaises(OSError):validator.check(proposal,approved,'developer-one',10)
-            Image.new('RGB',(1280,720)).save(app/'screenshots/01.png')
+            Image.new('RGB',(421,620)).save(app/'screenshots/01.png')
             manifest['modules'][0]['sources'][0].pop('commit');manifest['modules'][0]['sources'][0]['branch']='main'
             (app/'manifest.json').write_text(json.dumps(manifest));stage(proposal)
             with self.assertRaisesRegex(ValueError,'moving source'):validator.check(proposal,approved,'developer-one',10)
